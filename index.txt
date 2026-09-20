@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>STS 무한 루프 OST 영상 제작기</title>
+  <style>
+    :root {
+      --bg-dark: #0f0d19;
+      --card-bg: #181528;
+      --border-color: #3b3254;
+      --accent-gold: #f6ad55;
+      --accent-purple: #9f7aea;
+      --accent-hover: #ed8936;
+      --text-main: #f7fafc;
+      --text-sub: #a0aec0;
+      --danger: #e53e3e;
+      --success: #38a169;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 32px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 680px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--accent-gold);
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 6px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Upload section */
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .upload-box {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .upload-box:active, .upload-box:hover {
+      border-color: var(--accent-gold);
+      background: rgba(246, 173, 85, 0.05);
+    }
+
+    .upload-icon {
+      font-size: 24px;
+    }
+
+    .upload-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .upload-desc {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    /* Preview section */
+    .preview-container {
+      position: relative;
+      width: 100%;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-color);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .preview-placeholder {
+      color: var(--text-sub);
+      font-size: 13px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Controls */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      color: var(--text-sub);
+    }
+
+    .control-header span:last-child {
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #28233a;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(246, 173, 85, 0.6);
+    }
+
+    /* Action Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(237, 137, 54, 0.35);
+    }
+
+    .btn-primary:hover, .btn-primary:active {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(237, 137, 54, 0.5);
+    }
+
+    .btn-primary:disabled {
+      background: #4a425c;
+      color: #8c849e;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: #2c2540;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover, .btn-secondary:active {
+      background: #393152;
+    }
+
+    /* Progress bar */
+    .progress-box {
+      margin-top: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #252038;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-gold), var(--accent-purple));
+      transition: width 0.1s linear;
+    }
+
+    .progress-status {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+    }
+
+    /* Output video card */
+    .result-card {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      border: 1px solid var(--border-color);
+      max-height: 380px;
+    }
+
+    footer {
+      margin-top: 24px;
+      font-size: 11.5px;
+      color: #718096;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title">⚔️ STS 무한 루프 OST 영상 제작기</div>
+    <div class="subtitle">이미지를 업로드하면 시작과 끝이 매끄럽게 연결되는 루프 영상을 모바일에서 즉시 생성합니다.</div>
+  </header>
+
+  <div class="container">
+    <!-- 1. Upload Card -->
+    <div class="card">
+      <div class="card-title">📁 파일 선택</div>
+      <div class="upload-grid">
+        <label class="upload-box" for="imageInput">
+          <span class="upload-icon">🖼️</span>
+          <span class="upload-label" id="imageName">이미지 선택 (필수)</span>
+          <span class="upload-desc">PNG, JPG, WebP</span>
+          <input type="file" id="imageInput" accept="image/*" />
+        </label>
+
+        <label class="upload-box" for="audioInput">
+          <span class="upload-icon">🎵</span>
+          <span class="upload-label" id="audioName">배경음악 선택 (선택)</span>
+          <span class="upload-desc">MP3, WAV, M4A</span>
+          <input type="file" id="audioInput" accept="audio/*" />
+        </label>
+      </div>
+    </div>
+
+    <!-- 2. Preview Card -->
+    <div class="card">
+      <div class="card-title">🎬 실시간 모션 미리보기</div>
+      <div class="preview-container" id="previewWrapper">
+        <canvas id="previewCanvas" width="1280" height="720"></canvas>
+        <div class="preview-placeholder" id="placeholder">이미지를 선택하면 실시간 움직임 미리보기가 활성화됩니다.</div>
+      </div>
+    </div>
+
+    <!-- 3. Settings Card -->
+    <div class="card">
+      <div class="card-title">⚙️ 모션 및 영상 설정</div>
+      <div class="control-group">
+        <div class="control-item">
+          <div class="control-header">
+            <span>루프 1회 주기 (길이)</span>
+            <span id="valDuration">10초</span>
+          </div>
+          <input type="range" id="paramDuration" min="4" max="20" step="1" value="10" />
+        </div>
+
+        <div class="control-item">
+          <div class="control-header">
+            <span>카메라 줌(Zoom) 강도</span>
+            <span id="valZoom">3.5%</span>
+          </div>
+          <input type="range" id="paramZoom" min="1.0" max="8.0" step="0.5" value="3.5" />
+        </div>
+
+        <div class="control-item">
+          <div class="control-header">
+            <span>조명/불빛 호흡(Glow) 펄스</span>
+            <span id="valGlow">20%</span>
+          </div>
+          <input type="range" id="paramGlow" min="0" max="50" step="5" value="20" />
+        </div>
+
+        <div class="control-item">
+          <div class="control-header">
+            <span>부유 불빛 파티클 수</span>
+            <span id="valParticles">35개</span>
+          </div>
+          <input type="range" id="paramParticles" min="0" max="80" step="5" value="35" />
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="btn-row" style="margin-top: 16px;">
+        <button class="btn btn-primary" id="btnRecord" disabled>
+          <span>✨</span> <span id="recordBtnText">루프 동영상 내보내기</span>
+        </button>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-box" id="progressBox">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-status" id="progressStatus">동영상 렌더링 중... 0%</div>
+      </div>
+    </div>
+
+    <!-- 4. Result Card -->
+    <div class="card result-card" id="resultCard">
+      <div class="card-title">🎉 완성된 동영상</div>
+      <video id="outputVideo" controls playsinline loop></video>
+      <div class="btn-row">
+        <a id="btnDownload" class="btn btn-primary" download="sts_loop_video.mp4" style="text-decoration: none;">
+          <span>⬇️</span> 동영상 다운로드 (MP4/WebM)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    GitHub Pages 호스팅 지원 | 브라우저 클라이언트 렌더링 기반 (서버 전송 없음)
+  </footer>
+
+  <script>
+    // --- State Variables ---
+    let sourceImage = null;
+    let audioElement = null;
+    let audioBlobUrl = null;
+    let audioContext = null;
+    let audioSourceNode = null;
+    let audioDestNode = null;
+
+    let isRecording = false;
+    let animFrameId = null;
+
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
+
+    // Controls
+    const paramDuration = document.getElementById('paramDuration');
+    const paramZoom = document.getElementById('paramZoom');
+    const paramGlow = document.getElementById('paramGlow');
+    const paramParticles = document.getElementById('paramParticles');
+
+    const valDuration = document.getElementById('valDuration');
+    const valZoom = document.getElementById('valZoom');
+    const valGlow = document.getElementById('valGlow');
+    const valParticles = document.getElementById('valParticles');
+
+    const btnRecord = document.getElementById('btnRecord');
+    const recordBtnText = document.getElementById('recordBtnText');
+    const progressBox = document.getElementById('progressBox');
+    const progressFill = document.getElementById('progressFill');
+    const progressStatus = document.getElementById('progressStatus');
+
+    const resultCard = document.getElementById('resultCard');
+    const outputVideo = document.getElementById('outputVideo');
+    const btnDownload = document.getElementById('btnDownload');
+
+    // Update Control Labels
+    paramDuration.addEventListener('input', () => valDuration.textContent = paramDuration.value + '초');
+    paramZoom.addEventListener('input', () => valZoom.textContent = paramZoom.value + '%');
+    paramGlow.addEventListener('input', () => valGlow.textContent = paramGlow.value + '%');
+    paramParticles.addEventListener('input', () => valParticles.textContent = paramParticles.value + '개');
+
+    // --- Particle System ---
+    let particles = [];
+    function initParticles(count, w, h) {
+      particles = [];
+      const colors = [
+        'rgba(255, 200, 100, ', // 따뜻한 주황빛
+        'rgba(255, 230, 150, ', // 황금빛
+        'rgba(200, 230, 255, ', // 청백색
+        'rgba(230, 190, 255, '  // 신비로운 보라빛
+      ];
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x0: Math.random() * w,
+          y0: Math.random() * h,
+          size: 1.5 + Math.random() * 3.0,
+          colorBase: colors[Math.floor(Math.random() * colors.length)],
+          swayAmp: 12 + Math.random() * 20,
+          swayFreq: Math.floor(Math.random() * 3) + 1,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    // --- File Input Handlers ---
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('imageName').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          sourceImage = img;
+          placeholder.style.display = 'none';
+          btnRecord.disabled = false;
+
+          // Adjust canvas aspect ratio to image
+          const aspect = img.width / img.height;
+          canvas.width = 1280;
+          canvas.height = Math.round(1280 / aspect);
+
+          initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
+          startAnimation();
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('audioInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('audioName').textContent = file.name;
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+
+      audioBlobUrl = URL.createObjectURL(file);
+      audioElement = new Audio(audioBlobUrl);
+      audioElement.loop = true;
+    });
+
+    paramParticles.addEventListener('change', () => {
+      initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
+    });
+
+    // --- Animation Rendering Pipeline ---
+    let startTime = null;
+
+    function renderFrame(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const durationSec = parseFloat(paramDuration.value);
+      const elapsed = (timestamp - startTime) / 1000.0;
+      const t = (elapsed % durationSec) / durationSec; // [0.0, 1.0)
+      const angle = 2.0 * Math.PI * t;
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      if (sourceImage) {
+        // 1. Ken Burns Smooth Harmonic Zoom & Pan
+        const zoomRange = parseFloat(paramZoom.value) / 100.0;
+        const s = 0.5 * (1.0 - Math.cos(angle)); // 0 -> 1 -> 0
+        const zoom = 1.0 + zoomRange * s;
+
+        const panX = 12.0 * Math.sin(angle);
+        const panY = 8.0 * Math.sin(2.0 * angle);
+
+        const cropW = w / zoom;
+        const cropH = h / zoom;
+        const cx = w / 2.0 + panX;
+        const cy = h / 2.0 + panY;
+
+        ctx.save();
+        ctx.drawImage(
+          sourceImage,
+          (sourceImage.width / w) * (cx - cropW / 2.0),
+          (sourceImage.height / h) * (cy - cropH / 2.0),
+          (sourceImage.width / w) * cropW,
+          (sourceImage.height / h) * cropH,
+          0, 0, w, h
+        );
+        ctx.restore();
+
+        // 2. Ambient Lighting Glow Pulse (Screen / Lighter blend)
+        const glowFactor = parseFloat(paramGlow.value) / 100.0;
+        if (glowFactor > 0.01) {
+          const pulse = glowFactor * 0.5 * (1.0 + Math.sin(angle));
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.filter = 'brightness(1.6) contrast(1.8) blur(18px)';
+          ctx.globalAlpha = pulse;
+          ctx.drawImage(
+            sourceImage,
+            (sourceImage.width / w) * (cx - cropW / 2.0),
+            (sourceImage.height / h) * (cy - cropH / 2.0),
+            (sourceImage.width / w) * cropW,
+            (sourceImage.height / h) * cropH,
+            0, 0, w, h
+          );
+          ctx.restore();
+        }
+
+        // 3. Floating Light Particles (Seamless Wrap & Drift)
+        const particleCount = parseInt(paramParticles.value);
+        if (particleCount > 0 && particles.length > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (let i = 0; i < Math.min(particleCount, particles.length); i++) {
+            const p = particles[i];
+            const y = (p.y0 - t * h + h) % h;
+            const x = (p.x0 + p.swayAmp * Math.sin(p.swayFreq * angle + p.phase) + w) % w;
+
+            // Fade near edges
+            const edgeMargin = 0.12 * h;
+            let alpha = 1.0;
+            if (y < edgeMargin) alpha = y / edgeMargin;
+            else if (y > h - edgeMargin) alpha = (h - y) / edgeMargin;
+
+            const flicker = 0.75 + 0.25 * Math.sin(p.swayFreq * 2 * angle + p.phase);
+            const totalAlpha = Math.max(0, Math.min(1, alpha * flicker * 0.8));
+
+            ctx.fillStyle = p.colorBase + totalAlpha + ')';
+            ctx.beginPath();
+            ctx.arc(x, y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      if (!isRecording) {
+        animFrameId = requestAnimationFrame(renderFrame);
+      }
+    }
+
+    function startAnimation() {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      startTime = null;
+      animFrameId = requestAnimationFrame(renderFrame);
+    }
+
+    // --- MediaRecorder Video Export ---
+    btnRecord.addEventListener('click', async function() {
+      if (!sourceImage || isRecording) return;
+
+      isRecording = true;
+      btnRecord.disabled = true;
+      progressBox.style.display = 'flex';
+      resultCard.style.display = 'none';
+
+      const durationSec = parseFloat(paramDuration.value);
+      const fps = 30;
+
+      // Determine Best Supported MIME Type
+      let mimeType = 'video/mp4';
+      if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+        mimeType = 'video/mp4;codecs=avc1';
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mimeType = 'video/mp4';
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        mimeType = 'video/webm;codecs=vp9';
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        mimeType = 'video/webm';
+      }
+
+      const stream = canvas.captureStream(fps);
+
+      // Audio track integration if available
+      let combinedStream = stream;
+      let audioNodeToStop = null;
+      if (audioElement && audioBlobUrl) {
+        try {
+          if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          audioDestNode = audioContext.createMediaStreamDestination();
+          audioSourceNode = audioContext.createMediaElementSource(audioElement);
+          audioSourceNode.connect(audioDestNode);
+          audioSourceNode.connect(audioContext.destination);
+
+          const audioTracks = audioDestNode.stream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            combinedStream = new MediaStream([
+              ...stream.getVideoTracks(),
+              audioTracks[0]
+            ]);
+          }
+          audioElement.currentTime = 0;
+          audioElement.play();
+          audioNodeToStop = audioElement;
+        } catch (err) {
+          console.warn('오디오 트랙 결합 건너뜀:', err);
+        }
+      }
+
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: 8000000 // 8 Mbps high quality
+      });
+
+      const chunks = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        if (audioNodeToStop) {
+          audioNodeToStop.pause();
+          audioNodeToStop.currentTime = 0;
+        }
+
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const blob = new Blob(chunks, { type: mimeType });
+        const videoUrl = URL.createObjectURL(blob);
+
+        outputVideo.src = videoUrl;
+        btnDownload.href = videoUrl;
+        btnDownload.download = `sts_loop_${Date.now()}.${ext}`;
+
+        resultCard.style.display = 'flex';
+        progressBox.style.display = 'none';
+        btnRecord.disabled = false;
+        recordBtnText.textContent = '루프 동영상 내보내기';
+        isRecording = false;
+
+        // Resume live preview animation
+        startAnimation();
+      };
+
+      // Recording Render Loop
+      const totalFrames = Math.round(durationSec * fps);
+      let currentFrame = 0;
+      recorder.start();
+
+      const renderInterval = 1000.0 / fps;
+      const recordStartTime = performance.now();
+
+      function recordStep() {
+        if (currentFrame >= totalFrames) {
+          recorder.stop();
+          return;
+        }
+
+        const fakeTimestamp = recordStartTime + (currentFrame / fps) * 1000.0;
+        renderFrame(fakeTimestamp);
+
+        currentFrame++;
+        const percent = Math.round((currentFrame / totalFrames) * 100);
+        progressFill.style.width = percent + '%';
+        progressStatus.textContent = `동영상 렌더링 중... ${percent}% (${currentFrame}/${totalFrames} 프레임)`;
+
+        setTimeout(recordStep, renderInterval);
+      }
+
+      recordStep();
+    });
+  </script>
+</body>
+</html>
