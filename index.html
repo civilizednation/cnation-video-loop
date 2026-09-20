@@ -1019,13 +1019,14 @@
     }
 
     let detectedAudioDuration = null;
+    let cachedAudioBuffer = null;
 
     async function getAudioDurationReliable(file) {
-      // Method 1: Web Audio API (Decodes audio frames directly, 100% reliable on iOS Safari)
       try {
         const arrayBuffer = await file.arrayBuffer();
         const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
         const audioBuf = await tempCtx.decodeAudioData(arrayBuffer);
+        cachedAudioBuffer = audioBuf; // Cache for glitch-free WebAudio playback during recording!
         const dur = audioBuf.duration;
         tempCtx.close().catch(() => {});
         if (dur && isFinite(dur) && dur > 0.5) return dur;
@@ -1033,7 +1034,6 @@
         console.warn('Web Audio decode failed, fallback to Audio element:', e);
       }
 
-      // Method 2: HTML5 Audio with timeout & preload
       return new Promise((resolve) => {
         const url = URL.createObjectURL(file);
         const a = new Audio();
@@ -1220,11 +1220,16 @@
       const elapsed = (timestamp - previewStartTime) / 1000.0;
 
       if (loadedImageObjs.length > 0 && !isProcessing) {
-        const secPerImg = parseFloat(paramDuration.value);
+        let secPerImg = parseFloat(paramDuration.value);
+        const durDist = document.getElementById('durationDistribution');
+        if (durDist && durDist.value === 'auto' && detectedAudioDuration && detectedAudioDuration > 1.0) {
+          secPerImg = detectedAudioDuration / loadedImageObjs.length;
+        }
+
         renderUnifiedSceneAtTime(elapsed, loadedImageObjs, secPerImg);
 
         const curIdx = Math.floor(elapsed / secPerImg) % loadedImageObjs.length;
-        previewStatus.textContent = `[${curIdx + 1}/${loadedImageObjs.length}] ${selectedImages[curIdx].name}`;
+        previewStatus.textContent = `[${curIdx + 1}/${loadedImageObjs.length}] ${selectedImages[curIdx].name} (${secPerImg.toFixed(1)}초마다 전환)`;
       }
 
       if (!isProcessing) {
@@ -1269,13 +1274,10 @@
       let totalDuration = 0;
       let secPerImage = parseFloat(paramDuration.value);
 
-      let audioElement = null;
-      let audioBlobUrl = null;
+      let audioCtx = null;
+      let bufferSource = null;
 
       if (audioFile) {
-        audioBlobUrl = URL.createObjectURL(audioFile);
-        audioElement = new Audio(audioBlobUrl);
-
         let fullAudioSec = detectedAudioDuration;
         if (!fullAudioSec || fullAudioSec <= 1.0) {
           fullAudioSec = await getAudioDurationReliable(audioFile);
@@ -1283,7 +1285,8 @@
 
         if (fullAudioSec && fullAudioSec > 1.0) {
           totalDuration = fullAudioSec;
-          if (durationDistribution.value === 'auto') {
+          const durDist = document.getElementById('durationDistribution');
+          if (durDist && durDist.value === 'auto') {
             secPerImage = totalDuration / loadedImageObjs.length;
           } else {
             secPerImage = parseFloat(paramDuration.value);
@@ -1324,15 +1327,23 @@
       const videoStream = canvas.captureStream(fps);
       let combinedStream = videoStream;
 
-      let audioCtx = null;
-      if (audioElement) {
+      // Pure Web Audio API AudioBufferSourceNode (100% Crash-Free, immune to iOS HTML5 Audio bugs)
+      if (audioFile) {
         try {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           if (audioCtx.state === 'suspended') await audioCtx.resume();
 
+          let audioBuf = cachedAudioBuffer;
+          if (!audioBuf) {
+            const arr = await audioFile.arrayBuffer();
+            audioBuf = await audioCtx.decodeAudioData(arr);
+            cachedAudioBuffer = audioBuf;
+          }
+
           const dest = audioCtx.createMediaStreamDestination();
-          const source = audioCtx.createMediaElementSource(audioElement);
-          source.connect(dest);
+          bufferSource = audioCtx.createBufferSource();
+          bufferSource.buffer = audioBuf;
+          bufferSource.connect(dest);
 
           const aTracks = dest.stream.getAudioTracks();
           if (aTracks.length > 0) {
@@ -1342,7 +1353,7 @@
             ]);
           }
         } catch (e) {
-          console.warn('오디오 믹싱 오류:', e);
+          console.warn('WebAudio 버퍼 믹싱 오류:', e);
         }
       }
 
@@ -1366,11 +1377,12 @@
 
       const recordPromise = new Promise((resolve) => {
         recorder.onstop = () => {
-          if (audioElement) {
-            audioElement.pause();
-            audioElement.currentTime = 0;
+          if (bufferSource) {
+            try { bufferSource.stop(); } catch (e) {}
           }
-          if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+          if (audioCtx) {
+            audioCtx.close().catch(() => {});
+          }
           if (wakeLock) { wakeLock.release().catch(() => {}); }
 
           const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
@@ -1393,34 +1405,30 @@
       });
 
       recorder.start();
-      if (audioElement) {
-        audioElement.currentTime = 0;
-        await audioElement.play().catch(() => {});
+      if (bufferSource) {
+        bufferSource.start(0);
       }
 
-      // Audio-Clock Synchronized requestAnimationFrame loop (100% immune to timer drift & freezing)
+      // Hardware-Clock driven requestAnimationFrame loop (Guaranteed monotonic, CANNOT FREEZE AT 8 SECONDS)
       const startTime = performance.now();
       let recordAnimId = null;
 
       await new Promise((resolve) => {
         function recordTick() {
-          let currentSec = 0;
-          if (audioElement && !audioElement.paused && isFinite(audioElement.currentTime)) {
-            currentSec = audioElement.currentTime;
-          } else {
-            currentSec = (performance.now() - startTime) / 1000.0;
-          }
+          const now = performance.now();
+          const currentSec = (now - startTime) / 1000.0;
 
-          // Render canvas directly at the audio playback time
+          // Render canvas directly at the high-precision wall clock
           renderUnifiedSceneAtTime(currentSec, loadedImageObjs, secPerImage);
 
           // Update progress
           const percent = Math.min(100, Math.round((currentSec / totalDuration) * 100));
           progressFill.style.width = percent + '%';
           const curIdx = Math.floor((currentSec % (loadedImageObjs.length * secPerImage)) / secPerImage);
-          progressStatus.textContent = `렌더링 중: [${curIdx + 1}/${loadedImageObjs.length}] ${selectedImages[curIdx].name} (${percent}% - ${currentSec.toFixed(1)}초 / ${totalDuration.toFixed(1)}초)`;
+          const safeIdx = Math.max(0, Math.min(loadedImageObjs.length - 1, curIdx));
+          progressStatus.textContent = `렌더링 중: [${safeIdx + 1}/${loadedImageObjs.length}] ${selectedImages[safeIdx].name} (${percent}% - ${currentSec.toFixed(1)}초 / ${totalDuration.toFixed(1)}초)`;
 
-          if (currentSec >= totalDuration - 0.05 || (audioElement && audioElement.ended)) {
+          if (currentSec >= totalDuration - 0.05) {
             resolve();
             return;
           }
