@@ -738,6 +738,21 @@
           </div>
         </div>
 
+        <!-- NEW: Batch Download for Individual Videos! -->
+        <div id="batchDownloadWrapper" style="display:none; margin-top: 10px; margin-bottom: 14px; flex-direction: column; gap: 8px;">
+          <button class="btn btn-save" id="btnBatchZipDownload" type="button" style="width: 100%; padding: 13px 16px; font-size: 14.5px; font-weight: 800; background: linear-gradient(135deg, #38a169 0%, #22543d 100%); box-shadow: 0 4px 14px rgba(56, 161, 105, 0.4); display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; border: none; border-radius: 10px; color: #fff;">
+            <span style="font-size: 18px;">📦</span>
+            <span id="btnBatchZipText">모든 영상 ZIP 일괄 다운로드</span>
+          </button>
+          <div style="font-size: 11.5px; color: var(--text-sub); text-align: center; line-height: 1.4;">
+            * 스마트폰(아이폰): ZIP 다운로드 후 [파일] 앱에서 탭 한 번으로 모든 영상을 쉽게 풀 수 있습니다.
+          </div>
+          <button class="btn" id="btnBatchSeqDownload" type="button" style="width: 100%; padding: 10px 14px; font-size: 12.5px; font-weight: 700; background: #252038; border: 1px solid var(--border-color); color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border-radius: 10px;">
+            <span>⚡</span>
+            <span>각각의 동영상 순차적 자동 다운로드</span>
+          </button>
+        </div>
+
         <div id="resultsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
@@ -1518,11 +1533,168 @@
     }
 
     // --- MODE 2: INDIVIDUAL BATCH VIDEOS ---
+        // --- Pure JS Zero-Dependency ZIP Packager (STORE Mode for Instant Video Bundling) ---
+    async function createZipBlobFromFiles(fileList) {
+      const files = [];
+      for (const f of fileList) {
+        const arrayBuffer = await f.blob.arrayBuffer();
+        files.push({ name: f.name, data: new Uint8Array(arrayBuffer) });
+      }
+
+      const parts = [];
+      const centralDirectory = [];
+      let offset = 0;
+
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) {
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        crcTable[i] = c;
+      }
+      function crc32(buf) {
+        let crc = -1;
+        for (let i = 0; i < buf.length; i++) {
+          crc = (crc >>> 8) ^ crcTable[(crc ^ buf[i]) & 0xFF];
+        }
+        return (crc ^ (-1)) >>> 0;
+      }
+
+      for (const file of files) {
+        const nameBytes = new TextEncoder().encode(file.name);
+        const fileBytes = file.data;
+        const fileCrc = crc32(fileBytes);
+        const fileLen = fileBytes.length;
+
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const dv = new DataView(localHeader.buffer);
+        dv.setUint32(0, 0x04034b50, true);
+        dv.setUint16(4, 10, true);
+        dv.setUint16(6, 0, true);
+        dv.setUint16(8, 0, true); // STORE
+        dv.setUint16(10, 0, true);
+        dv.setUint16(12, 0, true);
+        dv.setUint32(14, fileCrc, true);
+        dv.setUint32(18, fileLen, true);
+        dv.setUint32(22, fileLen, true);
+        dv.setUint16(26, nameBytes.length, true);
+        dv.setUint16(28, 0, true);
+        localHeader.set(nameBytes, 30);
+
+        parts.push(localHeader);
+        parts.push(fileBytes);
+
+        const cdHeader = new Uint8Array(46 + nameBytes.length);
+        const cdv = new DataView(cdHeader.buffer);
+        cdv.setUint32(0, 0x02014b50, true);
+        cdv.setUint16(4, 20, true);
+        cdv.setUint16(6, 10, true);
+        cdv.setUint16(8, 0, true);
+        cdv.setUint16(10, 0, true); // STORE
+        cdv.setUint16(12, 0, true);
+        cdv.setUint16(14, 0, true);
+        cdv.setUint32(16, fileCrc, true);
+        cdv.setUint32(20, fileLen, true);
+        cdv.setUint32(24, fileLen, true);
+        cdv.setUint16(28, nameBytes.length, true);
+        cdv.setUint16(30, 0, true);
+        cdv.setUint16(32, 0, true);
+        cdv.setUint16(34, 0, true);
+        cdv.setUint16(36, 0, true);
+        cdv.setUint32(38, 0, true);
+        cdv.setUint32(42, offset, true);
+        cdHeader.set(nameBytes, 46);
+
+        centralDirectory.push(cdHeader);
+        offset += localHeader.length + fileLen;
+      }
+
+      const cdOffset = offset;
+      let cdSize = 0;
+      for (const cd of centralDirectory) {
+        parts.push(cd);
+        cdSize += cd.length;
+      }
+
+      const eocd = new Uint8Array(22);
+      const edv = new DataView(eocd.buffer);
+      edv.setUint32(0, 0x06054b50, true);
+      edv.setUint16(4, 0, true);
+      edv.setUint16(6, 0, true);
+      edv.setUint16(8, files.length, true);
+      edv.setUint16(10, files.length, true);
+      edv.setUint32(12, cdSize, true);
+      edv.setUint32(16, cdOffset, true);
+      edv.setUint16(20, 0, true);
+      parts.push(eocd);
+
+      return new Blob(parts, { type: 'application/zip' });
+    }
+
+    let generatedIndividualVideos = [];
+
+    const batchDownloadWrapper = document.getElementById('batchDownloadWrapper');
+    const btnBatchZipDownload = document.getElementById('btnBatchZipDownload');
+    const btnBatchZipText = document.getElementById('btnBatchZipText');
+    const btnBatchSeqDownload = document.getElementById('btnBatchSeqDownload');
+
+    btnBatchZipDownload.addEventListener('click', async function() {
+      if (generatedIndividualVideos.length === 0) return;
+      const originalText = btnBatchZipText.textContent;
+      btnBatchZipText.textContent = 'ZIP 압축 파일 생성 중...';
+      btnBatchZipDownload.disabled = true;
+
+      try {
+        const zipBlob = await createZipBlobFromFiles(generatedIndividualVideos);
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = zipUrl;
+        a.download = `cnation_ost_clips_${generatedIndividualVideos.length}files.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 10000);
+      } catch (err) {
+        console.error('ZIP 생성 오류:', err);
+        alert('ZIP 생성 중 오류가 발생했습니다. 순차 다운로드를 이용해 주세요.');
+      } finally {
+        btnBatchZipText.textContent = originalText;
+        btnBatchZipDownload.disabled = false;
+      }
+    });
+
+    btnBatchSeqDownload.addEventListener('click', async function() {
+      if (generatedIndividualVideos.length === 0) return;
+      btnBatchSeqDownload.disabled = true;
+      const origHtml = btnBatchSeqDownload.innerHTML;
+      btnBatchSeqDownload.textContent = '순차 다운로드 진행 중...';
+
+      for (let idx = 0; idx < generatedIndividualVideos.length; idx++) {
+        const item = generatedIndividualVideos[idx];
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.download = item.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      btnBatchSeqDownload.disabled = false;
+      btnBatchSeqDownload.innerHTML = '<span>⚡</span><span>모든 영상 순차 다운로드 완료!</span>';
+      setTimeout(() => {
+        btnBatchSeqDownload.innerHTML = origHtml;
+      }, 3000);
+    });
+
     async function recordIndividualVideos() {
       const fps = parseInt(paramFps.value);
       const total = loadedImageObjs.length;
       outputVideo.style.display = 'none';
       unifiedDownloadWrapper.style.display = 'none';
+      batchDownloadWrapper.style.display = 'none';
+      generatedIndividualVideos = [];
 
       for (let i = 0; i < total; i++) {
         const img = loadedImageObjs[i];
@@ -1552,7 +1724,8 @@
             const blob = new Blob(chunks, { type: mimeType });
             const blobUrl = URL.createObjectURL(blob);
             const stem = imgFile.name.replace(/\.[^/.]+$/, "");
-            const outName = `${stem}_${paramResolution.value}p.${ext}`;
+            const outName = `${String(i + 1).padStart(2, '0')}_${stem}_${paramResolution.value}p.${ext}`;
+            generatedIndividualVideos.push({ name: outName, blob: blob, url: blobUrl });
 
             const row = document.createElement('div');
             row.style.display = 'flex';
@@ -1592,6 +1765,10 @@
       }
 
       progressStatus.textContent = '모든 개별 영상 변환 완료!';
+      if (generatedIndividualVideos.length > 0) {
+        btnBatchZipText.textContent = `모든 영상 ZIP 일괄 다운로드 (총 ${generatedIndividualVideos.length}개)`;
+        batchDownloadWrapper.style.display = 'flex';
+      }
     }
   </script>
 </body>
