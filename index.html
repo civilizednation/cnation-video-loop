@@ -754,6 +754,18 @@
         </div>
 
         <div id="resultsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
+        <!-- Finish Actions: Restart or Exit -->
+        <div id="postActionRow" style="margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; gap: 10px;">
+          <button class="btn btn-primary" id="btnRestartApp" type="button" style="flex: 1; padding: 13px 14px; font-size: 14px; font-weight: 800; background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border: none; border-radius: 10px; color: #fff; box-shadow: 0 4px 14px rgba(237, 137, 54, 0.35);">
+            <span>🔄</span>
+            <span>추가 영상 제작</span>
+          </button>
+          <button class="btn" id="btnCloseApp" type="button" style="flex: 1; padding: 13px 14px; font-size: 14px; font-weight: 700; background: #252038; border: 1px solid var(--border-color); color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border-radius: 10px;">
+            <span>🚪</span>
+            <span>앱 종료</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1770,6 +1782,103 @@
         batchDownloadWrapper.style.display = 'flex';
       }
     }
+      // --- Finish Action Handlers: Restart vs Exit ---
+    function resetAppToInitialState() {
+      // 1. Clear media states & memory
+      selectedImages = [];
+      loadedImageObjs = [];
+      selectedAudios = [];
+      detectedAudioDuration = null;
+      cachedAudioBuffer = null;
+      generatedIndividualVideos = [];
+
+      // 2. Reset file inputs
+      imageInput.value = '';
+      audioInput.value = '';
+
+      // 3. Reset labels & badges
+      imageLabel.textContent = '이미지 파일 선택 (여러 장)';
+      audioLabel.textContent = '음원 파일 선택 (MP3 1개)';
+      fileCountBadge.textContent = '이미지 0개 / 음원 0개';
+      queueBox.innerHTML = '';
+      queueBox.style.display = 'none';
+
+      // 4. Reset preview & canvas
+      placeholder.style.display = 'block';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+
+      // 5. Reset progress & results
+      btnStartRecord.disabled = true;
+      updateActionBtnText();
+      progressBox.style.display = 'none';
+      progressFill.style.width = '0%';
+      progressStatus.textContent = '준비 중...';
+      resultsBox.style.display = 'none';
+      resultsList.innerHTML = '';
+      outputVideo.src = '';
+      outputVideo.style.display = 'none';
+      unifiedDownloadWrapper.style.display = 'none';
+      batchDownloadWrapper.style.display = 'none';
+
+      // 6. Reset slider & calculation text
+      updateDurationInfoUI();
+
+      // 7. Smoothly scroll to the very top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const btnRestartApp = document.getElementById('btnRestartApp');
+    const btnCloseApp = document.getElementById('btnCloseApp');
+    const exitModal = document.getElementById('exitModal');
+    const btnRestartFromExit = document.getElementById('btnRestartFromExit');
+
+    if (btnRestartApp) {
+      btnRestartApp.addEventListener('click', resetAppToInitialState);
+    }
+
+    if (btnRestartFromExit) {
+      btnRestartFromExit.addEventListener('click', () => {
+        exitModal.style.display = 'none';
+        resetAppToInitialState();
+      });
+    }
+
+    if (btnCloseApp) {
+      btnCloseApp.addEventListener('click', () => {
+        // Clear memory
+        selectedImages = [];
+        loadedImageObjs = [];
+        selectedAudios = [];
+        cachedAudioBuffer = null;
+        generatedIndividualVideos = [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Show exit modal
+        exitModal.style.display = 'flex';
+
+        // Try native window.close()
+        try { window.close(); } catch (e) {}
+      });
+    }
   </script>
+  <!-- App Exit Modal -->
+  <div id="exitModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; max-width: 380px; width: 100%; text-align: center; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);">
+      <div style="font-size: 42px; margin-bottom: 12px;">👋</div>
+      <div style="font-size: 17px; font-weight: 800; color: var(--accent-gold); margin-bottom: 8px;">앱 이용을 완료했습니다</div>
+      <div style="font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 22px;">
+        모든 임시 영상 및 메모리가 깨끗하게 정리되었습니다.<br>
+        열려 있는 브라우저 탭을 닫으셔도 좋습니다.
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-primary" id="btnRestartFromExit" type="button" style="width: 100%; padding: 12px; font-size: 13.5px; font-weight: 700; background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);">
+          🔄 처음부터 다시 만들기
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
