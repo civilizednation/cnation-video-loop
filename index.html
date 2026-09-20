@@ -613,6 +613,7 @@
             <input type="range" id="paramDuration" min="3" max="20" step="1" value="8" />
           </div>
         </div>
+        <div id="durationCalcInfo" style="font-size: 12px; color: var(--accent-gold); background: rgba(246, 173, 85, 0.1); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(246, 173, 85, 0.25); line-height: 1.5;"></div>
 
         <!-- Motion & Particle Controls -->
         <div class="control-row">
@@ -853,7 +854,11 @@
     btnBackToHome.addEventListener('click', showHome);
 
     // --- Control Label Handlers ---
-    paramDuration.addEventListener('input', () => valDuration.textContent = paramDuration.value + '초');
+    paramDuration.addEventListener('input', () => {
+      valDuration.textContent = paramDuration.value + '초';
+      updateDurationInfoUI();
+    });
+    document.getElementById('durationDistribution').addEventListener('change', updateDurationInfoUI);
     paramZoom.addEventListener('input', () => {
       const v = parseFloat(paramZoom.value);
       valZoom.textContent = v === 0 ? '0% (정지)' : v + '%';
@@ -977,13 +982,26 @@
       updateCanvasSize(loadedImageObjs[0].width, loadedImageObjs[0].height);
       initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
       startLivePreview();
+      updateDurationInfoUI();
     });
 
-    audioInput.addEventListener('change', function(e) {
+    audioInput.addEventListener('change', async function(e) {
       if (!e.target.files || e.target.files.length === 0) return;
       selectedAudios = Array.from(e.target.files);
-      audioLabel.textContent = `${selectedAudios.length}개 음원 선택됨`;
+      audioLabel.textContent = `${selectedAudios.length}개 음원 분석 중...`;
+
+      if (selectedAudios.length > 0) {
+        detectedAudioDuration = await getAudioDurationReliable(selectedAudios[0]);
+        if (detectedAudioDuration && detectedAudioDuration > 0.5) {
+          const min = Math.floor(detectedAudioDuration / 60);
+          const sec = Math.round(detectedAudioDuration % 60);
+          audioLabel.textContent = `🎵 ${selectedAudios[0].name} (${min}분 ${sec}초)`;
+        } else {
+          audioLabel.textContent = `🎵 ${selectedAudios[0].name}`;
+        }
+      }
       fileCountBadge.textContent = `이미지 ${selectedImages.length}개 / 음원 ${selectedAudios.length}개`;
+      updateDurationInfoUI();
     });
 
     function loadFileAsImage(file) {
@@ -1000,40 +1018,88 @@
       });
     }
 
-    function getAudioDuration(file) {
+    let detectedAudioDuration = null;
+
+    async function getAudioDurationReliable(file) {
+      // Method 1: Web Audio API (Decodes audio frames directly, 100% reliable on iOS Safari)
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuf = await tempCtx.decodeAudioData(arrayBuffer);
+        const dur = audioBuf.duration;
+        tempCtx.close().catch(() => {});
+        if (dur && isFinite(dur) && dur > 0.5) return dur;
+      } catch (e) {
+        console.warn('Web Audio decode failed, fallback to Audio element:', e);
+      }
+
+      // Method 2: HTML5 Audio with timeout & preload
       return new Promise((resolve) => {
         const url = URL.createObjectURL(file);
-        const a = new Audio(url);
-        a.addEventListener('loadedmetadata', () => {
-          const d = a.duration;
-          URL.revokeObjectURL(url);
-          resolve(d);
-        });
-        a.addEventListener('error', () => {
+        const a = new Audio();
+        a.preload = 'metadata';
+        const timer = setTimeout(() => {
           URL.revokeObjectURL(url);
           resolve(null);
-        });
+        }, 3000);
+        a.onloadedmetadata = () => {
+          clearTimeout(timer);
+          const d = a.duration;
+          URL.revokeObjectURL(url);
+          resolve(isFinite(d) ? d : null);
+        };
+        a.onerror = () => {
+          clearTimeout(timer);
+          URL.revokeObjectURL(url);
+          resolve(null);
+        };
+        a.src = url;
+        a.load();
       });
+    }
+
+    function updateDurationInfoUI() {
+      const infoEl = document.getElementById('durationCalcInfo');
+      if (!infoEl) return;
+      const numImg = selectedImages.length;
+      if (numImg === 0) {
+        infoEl.style.display = 'none';
+        return;
+      }
+      infoEl.style.display = 'block';
+
+      if (detectedAudioDuration && detectedAudioDuration > 1.0) {
+        const min = Math.floor(detectedAudioDuration / 60);
+        const sec = Math.round(detectedAudioDuration % 60);
+        const durDist = document.getElementById('durationDistribution');
+        if (durDist && durDist.value === 'auto') {
+          const perImg = (detectedAudioDuration / numImg).toFixed(1);
+          infoEl.innerHTML = `💡 <b>음원 전체 길이(${min}분 ${sec}초)</b>에 맞춰 ${numImg}개 이미지가 <b>장당 약 ${perImg}초씩 자동 배분</b>되어 음악 끝까지 렌더링됩니다.`;
+        } else {
+          const fixedSec = parseFloat(paramDuration.value);
+          infoEl.innerHTML = `💡 <b>음원 전체 길이(${min}분 ${sec}초)</b> 동안 ${numImg}개 이미지가 장당 <b>${fixedSec}초씩 순환 루프</b>되며 렌더링됩니다.`;
+        }
+      } else {
+        const fixedSec = parseFloat(paramDuration.value);
+        const total = (numImg * fixedSec).toFixed(0);
+        infoEl.innerHTML = `💡 음원 없이 ${numImg}개 이미지가 장당 <b>${fixedSec}초씩 총 ${total}초</b> 루프 영상으로 제작됩니다.`;
+      }
     }
 
     // --- Core Canvas Renderer with 0% Zoom Static Support ---
     function drawLayer(targetImg, localT, alpha = 1.0) {
+      if (!targetImg) return;
       const angle = 2.0 * Math.PI * localT;
       const w = canvas.width;
       const h = canvas.height;
 
-      // 1. Ken Burns Zoom & Pan
       const zoomRange = parseFloat(paramZoom.value) / 100.0;
       ctx.save();
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-      let cropX, cropY, cropW, cropH;
+      // 1. Ken Burns Zoom & Pan via Canvas Transformations (100% bug-free & GPU accelerated)
       if (zoomRange <= 0.0001) {
-        // 0% Zoom: completely static, zero jitter
-        cropX = 0;
-        cropY = 0;
-        cropW = targetImg.width;
-        cropH = targetImg.height;
+        // 0% Zoom: completely static, zero zoom or pan
         ctx.drawImage(targetImg, 0, 0, w, h);
       } else {
         const s = 0.5 * (1.0 - Math.cos(angle)); // 0 -> 1 -> 0
@@ -1042,17 +1108,9 @@
         const panX = 8.0 * panScale * Math.sin(angle);
         const panY = 5.0 * panScale * Math.sin(2.0 * angle);
 
-        const cW = w / zoom;
-        const cH = h / zoom;
-        const cx = w / 2.0 + panX;
-        const cy = h / 2.0 + panY;
-
-        cropX = (targetImg.width / w) * (cx - cW / 2.0);
-        cropY = (targetImg.height / h) * (cy - cH / 2.0);
-        cropW = (targetImg.width / w) * cW;
-        cropH = (targetImg.height / h) * cH;
-
-        ctx.drawImage(targetImg, cropX, cropY, cropW, cropH, 0, 0, w, h);
+        ctx.translate(w / 2 + panX, h / 2 + panY);
+        ctx.scale(zoom, zoom);
+        ctx.drawImage(targetImg, -w / 2, -h / 2, w, h);
       }
 
       // 2. Ambient Lighting Glow Pulse
@@ -1061,8 +1119,12 @@
         const pulse = glowFactor * 0.5 * (1.0 + Math.sin(angle));
         ctx.globalCompositeOperation = 'screen';
         ctx.filter = 'brightness(1.5) contrast(1.7) blur(14px)';
-        ctx.globalAlpha = alpha * pulse;
-        ctx.drawImage(targetImg, cropX, cropY, cropW, cropH, 0, 0, w, h);
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * pulse));
+        if (zoomRange <= 0.0001) {
+          ctx.drawImage(targetImg, 0, 0, w, h);
+        } else {
+          ctx.drawImage(targetImg, -w / 2, -h / 2, w, h);
+        }
       }
       ctx.restore();
     }
@@ -1172,6 +1234,7 @@
       btnStartRecord.disabled = false;
       isProcessing = false;
       startLivePreview();
+      updateDurationInfoUI();
     });
 
     // --- MODE 1: UNIFIED SINGLE VIDEO (1곡에 맞춘 통합 영상) ---
@@ -1188,12 +1251,18 @@
       if (audioFile) {
         audioBlobUrl = URL.createObjectURL(audioFile);
         audioElement = new Audio(audioBlobUrl);
-        const fullAudioSec = await getAudioDuration(audioFile);
 
-        if (fullAudioSec && fullAudioSec > 2.0) {
+        let fullAudioSec = detectedAudioDuration;
+        if (!fullAudioSec || fullAudioSec <= 1.0) {
+          fullAudioSec = await getAudioDurationReliable(audioFile);
+        }
+
+        if (fullAudioSec && fullAudioSec > 1.0) {
           totalDuration = fullAudioSec;
           if (durationDistribution.value === 'auto') {
             secPerImage = totalDuration / loadedImageObjs.length;
+          } else {
+            secPerImage = parseFloat(paramDuration.value);
           }
         } else {
           totalDuration = loadedImageObjs.length * secPerImage;
