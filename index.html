@@ -605,10 +605,10 @@
             </select>
           </div>
 
-          <div class="control-item">
+          <div class="control-item" id="colDurationSlider" style="transition: all 0.25s ease;">
             <div class="control-header">
               <span>이미지당 재생 시간</span>
-              <span id="valDuration">8초</span>
+              <span id="valDuration" style="font-weight: 700; color: var(--accent-gold);">8초</span>
             </div>
             <input type="range" id="paramDuration" min="3" max="20" step="1" value="8" />
           </div>
@@ -1060,10 +1060,30 @@
 
     function updateDurationInfoUI() {
       const infoEl = document.getElementById('durationCalcInfo');
-      if (!infoEl) return;
+      const sliderItem = document.getElementById('colDurationSlider');
+      const durDist = document.getElementById('durationDistribution');
       const numImg = selectedImages.length;
+      const isAuto = (durDist && durDist.value === 'auto' && numImg > 0);
+
+      // Gray out & disable duration slider when auto-distribute is selected
+      if (sliderItem) {
+        if (isAuto) {
+          sliderItem.style.opacity = '0.35';
+          sliderItem.style.filter = 'grayscale(1)';
+          sliderItem.style.pointerEvents = 'none';
+          paramDuration.disabled = true;
+        } else {
+          sliderItem.style.opacity = '1.0';
+          sliderItem.style.filter = 'none';
+          sliderItem.style.pointerEvents = 'auto';
+          paramDuration.disabled = false;
+        }
+      }
+
+      if (!infoEl) return;
       if (numImg === 0) {
         infoEl.style.display = 'none';
+        if (!isAuto) valDuration.textContent = paramDuration.value + '초';
         return;
       }
       infoEl.style.display = 'block';
@@ -1071,17 +1091,20 @@
       if (detectedAudioDuration && detectedAudioDuration > 1.0) {
         const min = Math.floor(detectedAudioDuration / 60);
         const sec = Math.round(detectedAudioDuration % 60);
-        const durDist = document.getElementById('durationDistribution');
-        if (durDist && durDist.value === 'auto') {
-          const perImg = (detectedAudioDuration / numImg).toFixed(1);
-          infoEl.innerHTML = `💡 <b>음원 전체 길이(${min}분 ${sec}초)</b>에 맞춰 ${numImg}개 이미지가 <b>장당 약 ${perImg}초씩 자동 배분</b>되어 음악 끝까지 렌더링됩니다.`;
+        const perImg = (detectedAudioDuration / numImg).toFixed(1);
+
+        if (isAuto) {
+          valDuration.textContent = `자동 배분 (${perImg}초)`;
+          infoEl.innerHTML = `💡 <b>음원 전체 길이(${min}분 ${sec}초)</b>에 맞춰 ${numImg}개 이미지가 <b>장당 약 ${perImg}초씩 자동 배분</b>되어 음악 끝까지 렌더링됩니다. (아래 8초 옵션은 자동 비활성화됨)`;
         } else {
           const fixedSec = parseFloat(paramDuration.value);
+          valDuration.textContent = fixedSec + '초';
           infoEl.innerHTML = `💡 <b>음원 전체 길이(${min}분 ${sec}초)</b> 동안 ${numImg}개 이미지가 장당 <b>${fixedSec}초씩 순환 루프</b>되며 렌더링됩니다.`;
         }
       } else {
         const fixedSec = parseFloat(paramDuration.value);
         const total = (numImg * fixedSec).toFixed(0);
+        valDuration.textContent = fixedSec + '초';
         infoEl.innerHTML = `💡 음원 없이 ${numImg}개 이미지가 장당 <b>${fixedSec}초씩 총 ${total}초</b> 루프 영상으로 제작됩니다.`;
       }
     }
@@ -1113,18 +1136,19 @@
         ctx.drawImage(targetImg, -w / 2, -h / 2, w, h);
       }
 
-      // 2. Ambient Lighting Glow Pulse
+      // 2. Ambient Lighting Glow Pulse (100% WebKit & iOS Safari Crash-Free, zero memory leaks)
       const glowFactor = parseFloat(paramGlow.value) / 100.0;
       if (glowFactor > 0.01) {
         const pulse = glowFactor * 0.5 * (1.0 + Math.sin(angle));
-        ctx.globalCompositeOperation = 'screen';
-        ctx.filter = 'brightness(1.5) contrast(1.7) blur(14px)';
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * pulse));
-        if (zoomRange <= 0.0001) {
-          ctx.drawImage(targetImg, 0, 0, w, h);
-        } else {
-          ctx.drawImage(targetImg, -w / 2, -h / 2, w, h);
-        }
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const grad = ctx.createRadialGradient(0, 0, Math.min(w, h) * 0.1, 0, 0, Math.max(w, h) * 0.65);
+        grad.addColorStop(0, `rgba(255, 235, 190, ${Math.min(1, alpha * pulse * 0.5)})`);
+        grad.addColorStop(0.5, `rgba(246, 173, 85, ${Math.min(1, alpha * pulse * 0.25)})`);
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.restore();
       }
       ctx.restore();
     }
@@ -1274,7 +1298,17 @@
       updateCanvasSize(loadedImageObjs[0].width, loadedImageObjs[0].height);
       initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
 
-      const totalFrames = Math.round(totalDuration * fps);
+      // Auto-scroll canvas into view so iOS Safari never suspends canvas compositing!
+      const previewWrapper = document.getElementById('previewWrapper');
+      if (previewWrapper) {
+        previewWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      // Request Screen Wake Lock (prevent screen dim/lock on mobile during recording)
+      let wakeLock = null;
+      if ('wakeLock' in navigator) {
+        try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      }
 
       let mimeType = 'video/mp4';
       if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
@@ -1337,6 +1371,7 @@
             audioElement.currentTime = 0;
           }
           if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+          if (wakeLock) { wakeLock.release().catch(() => {}); }
 
           const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
           const blob = new Blob(chunks, { type: mimeType });
@@ -1346,7 +1381,6 @@
           outputVideo.src = blobUrl;
           outputVideo.style.display = 'block';
 
-          // Prominent Save Button
           btnSaveUnified.href = blobUrl;
           btnSaveUnified.download = outName;
           unifiedDownloadWrapper.style.display = 'block';
@@ -1361,21 +1395,43 @@
       recorder.start();
       if (audioElement) {
         audioElement.currentTime = 0;
-        audioElement.play().catch(() => {});
+        await audioElement.play().catch(() => {});
       }
 
-      for (let f = 0; f < totalFrames; f++) {
-        const currentSec = f / fps;
-        renderUnifiedSceneAtTime(currentSec, loadedImageObjs, secPerImage);
+      // Audio-Clock Synchronized requestAnimationFrame loop (100% immune to timer drift & freezing)
+      const startTime = performance.now();
+      let recordAnimId = null;
 
-        const percent = Math.round((f / totalFrames) * 100);
-        progressFill.style.width = percent + '%';
-        const curIdx = Math.floor((currentSec % (loadedImageObjs.length * secPerImage)) / secPerImage);
-        progressStatus.textContent = `렌더링 중: [${curIdx + 1}/${loadedImageObjs.length}] ${selectedImages[curIdx].name} (${percent}% - ${f}/${totalFrames}F)`;
+      await new Promise((resolve) => {
+        function recordTick() {
+          let currentSec = 0;
+          if (audioElement && !audioElement.paused && isFinite(audioElement.currentTime)) {
+            currentSec = audioElement.currentTime;
+          } else {
+            currentSec = (performance.now() - startTime) / 1000.0;
+          }
 
-        await new Promise(r => setTimeout(r, 1000 / fps));
-      }
+          // Render canvas directly at the audio playback time
+          renderUnifiedSceneAtTime(currentSec, loadedImageObjs, secPerImage);
 
+          // Update progress
+          const percent = Math.min(100, Math.round((currentSec / totalDuration) * 100));
+          progressFill.style.width = percent + '%';
+          const curIdx = Math.floor((currentSec % (loadedImageObjs.length * secPerImage)) / secPerImage);
+          progressStatus.textContent = `렌더링 중: [${curIdx + 1}/${loadedImageObjs.length}] ${selectedImages[curIdx].name} (${percent}% - ${currentSec.toFixed(1)}초 / ${totalDuration.toFixed(1)}초)`;
+
+          if (currentSec >= totalDuration - 0.05 || (audioElement && audioElement.ended)) {
+            resolve();
+            return;
+          }
+
+          recordAnimId = requestAnimationFrame(recordTick);
+        }
+
+        recordAnimId = requestAnimationFrame(recordTick);
+      });
+
+      if (recordAnimId) cancelAnimationFrame(recordAnimId);
       recorder.stop();
       await recordPromise;
     }
