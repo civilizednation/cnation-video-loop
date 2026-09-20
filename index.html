@@ -111,6 +111,51 @@
       font-weight: 600;
     }
 
+    /* Device Notice Banner */
+    .device-notice-banner {
+      background: rgba(246, 173, 85, 0.08);
+      border: 1px solid rgba(246, 173, 85, 0.3);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 4px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+    .notice-icon {
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    .notice-content {
+      flex: 1;
+    }
+    .notice-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .notice-desc {
+      font-size: 12px;
+      color: var(--text-sub);
+      line-height: 1.55;
+    }
+    .notice-list {
+      margin-top: 6px;
+      padding-left: 16px;
+      margin-bottom: 0;
+    }
+    .notice-list li {
+      margin-bottom: 4px;
+    }
+    .notice-list li b {
+      color: #fff;
+    }
+
     /* Upload grid */
     .upload-grid {
       display: grid;
@@ -510,6 +555,21 @@
 
   <!-- ==================== 1. MAIN MAKER VIEW ==================== -->
   <div class="container" id="mainView">
+    <!-- ⚠️ Device Environmental Notice Banner -->
+    <div class="device-notice-banner">
+      <div class="notice-icon">📱</div>
+      <div class="notice-content">
+        <div class="notice-title">⚠️ 스마트폰(모바일) 브라우저 이용 안내</div>
+        <div class="notice-desc">
+          스마트폰 브라우저(특히 아이폰 사파리)는 기기 자체의 비디오 버퍼 한계로 인해 <b>10~15초를 초과하는 긴 영상 인코딩 시 중간에 멈추는 제약</b>이 있습니다.
+          <ul class="notice-list">
+            <li><b>스마트폰 권장</b>: 모드를 <b>[이미지별 개별 영상 분리 제작]</b>으로 설정하여 이미지 개수를 늘리고 개당 <b>10초~15초 이내의 분할 영상</b>으로 제작해 주세요.</li>
+            <li><b>긴 통합 영상 제작 (1분 이상 풀버전)</b>: 음원 전체 길이에 맞춘 풀버전 완성형 비디오는 <b>컴퓨터나 노트북(Chrome, Edge 등)</b> 환경을 이용해 주세요.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- 1. Upload Card -->
     <div class="card">
       <div class="card-title">
@@ -556,10 +616,10 @@
       <!-- Mode selector tabs -->
       <div class="mode-tabs">
         <button class="mode-tab active" id="tabUnified" type="button">
-          🎬 하나의 영상으로 합치기 (추천)
+          🎬 하나의 영상으로 합치기 (PC 권장)
         </button>
         <button class="mode-tab" id="tabIndividual" type="button">
-          📁 이미지별 개별 영상 분리 제작
+          📁 이미지별 개별 영상 분리 제작 (모바일 권장)
         </button>
       </div>
 
@@ -696,6 +756,9 @@
       <!-- Section 1: Core Flow -->
       <div class="guide-section">
         <div class="guide-heading">1. 기본 동작 방식 및 제작 흐름</div>
+        <div style="background: rgba(246, 173, 85, 0.1); border-left: 3px solid var(--accent-gold); padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; color: var(--accent-gold); line-height: 1.5;">
+          ⚠️ <b>스마트폰(모바일) 이용 시 필수 유의사항</b>: 스마트폰은 기기 자체의 비디오 버퍼 한계로 10~15초를 초과하는 영상 제작 시 멈출 수 있습니다. 스마트폰에서는 <b>'이미지별 개별 영상 분리 제작'</b> 모드로 이미지당 10~15초 이내 분할 영상으로 제작하시고, 1분 이상의 긴 영상은 <b>컴퓨터나 노트북</b>을 이용해 주세요.
+        </div>
         <div class="guide-text">
           본 앱은 여러 장의 이미지(예: 14장의 OST 일러스트)와 1곡의 배경음악(MP3)을 결합하여, 음악 재생 시간 동안 이미지들이 부드럽게 크로스페이드(디졸브)되며 순환하는 <span class="guide-highlight">단 1개의 완성형 풀버전 OST 동영상</span>을 제작합니다.
         </div>
@@ -1254,6 +1317,11 @@
       resultsList.innerHTML = '';
       unifiedDownloadWrapper.style.display = 'none';
 
+      // 사용자가 버튼 클릭 및 렌더링 진행 상황을 즉시 확인할 수 있도록 아래 진행 막대바(progressBox)로 화면 이동
+      setTimeout(() => {
+        progressBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 350);
+
       if (appMode === 'unified') {
         await recordUnifiedVideo();
       } else {
@@ -1358,12 +1426,13 @@
       }
 
       const res = paramResolution.value;
-      let bitrate = 4000000;
-      if (res === '1080') bitrate = 12000000;
-      else if (res === '720') bitrate = 8000000;
-      else if (res === '480') bitrate = 4000000;
-      else if (res === '360') bitrate = 2500000;
-      else if (res === '240') bitrate = 1200000;
+      // Mobile-optimized bitrates to prevent VideoToolbox hardware encoder buffer overflow on iOS
+      let bitrate = 2000000;
+      if (res === '1080') bitrate = 6000000;
+      else if (res === '720') bitrate = 3500000;
+      else if (res === '480') bitrate = 1800000;
+      else if (res === '360') bitrate = 1000000;
+      else if (res === '240') bitrate = 500000;
 
       const recorder = new MediaRecorder(combinedStream, {
         mimeType: mimeType,
@@ -1372,7 +1441,7 @@
 
       const chunks = [];
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
+        if (e.data && e.data.size > 0) chunks.push(e.data);
       };
 
       const recordPromise = new Promise((resolve) => {
@@ -1400,11 +1469,15 @@
           resultsBox.style.display = 'flex';
           progressFill.style.width = '100%';
           progressStatus.textContent = '동영상 제작 완료! 아래에서 확인 및 저장하세요.';
+          setTimeout(() => {
+            resultsBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 200);
           resolve();
         };
       });
 
-      recorder.start();
+      // Flush chunks every 1000ms to prevent iOS VideoToolbox buffer overflow!
+      recorder.start(1000);
       if (bufferSource) {
         bufferSource.start(0);
       }
@@ -1459,7 +1532,11 @@
         updateCanvasSize(img.width, img.height);
         initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
 
-        const durationSec = parseFloat(paramDuration.value);
+        let durationSec = parseFloat(paramDuration.value);
+        const durDist = document.getElementById('durationDistribution');
+        if (durDist && durDist.value === 'auto' && detectedAudioDuration && detectedAudioDuration > 1.0 && total > 0) {
+          durationSec = detectedAudioDuration / total;
+        }
         const totalFrames = Math.round(durationSec * fps);
 
         let mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
@@ -1497,7 +1574,7 @@
           };
         });
 
-        recorder.start();
+        recorder.start(1000);
         for (let f = 0; f < totalFrames; f++) {
           const t = f / totalFrames;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
