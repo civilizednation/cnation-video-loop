@@ -54,11 +54,26 @@
       gap: 8px;
     }
 
-    .subtitle {
+    .subtitle-wrapper {
       font-size: 13px;
       color: var(--text-sub);
       margin-top: 6px;
-      line-height: 1.4;
+      line-height: 1.5;
+    }
+
+    .guide-link-btn {
+      color: var(--accent-gold);
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 700;
+      margin-left: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      font-size: 13px;
+      padding: 0;
     }
 
     .container {
@@ -335,9 +350,24 @@
       transform: none;
     }
 
-    .btn-success {
-      background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    /* High Visibility Save Button */
+    .btn-save {
+      background: linear-gradient(135deg, #38a169 0%, #22543d 100%);
       color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      box-shadow: 0 6px 20px rgba(56, 161, 105, 0.45);
+      border: 1px solid #48bb78;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      padding: 16px;
+      border-radius: 14px;
+    }
+
+    .btn-save:hover, .btn-save:active {
+      background: linear-gradient(135deg, #48bb78 0%, #276749 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(72, 187, 120, 0.6);
     }
 
     /* Progress */
@@ -385,25 +415,86 @@
       max-height: 380px;
     }
 
-    .download-link {
-      color: #fff;
-      text-decoration: none;
+    /* Guide View Styles */
+    #guideView {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .guide-section {
+      margin-bottom: 16px;
+    }
+
+    .guide-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .guide-heading {
+      font-size: 15px;
       font-weight: 700;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 6px;
-      font-size: 14px;
-      background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-      padding: 12px;
-      border-radius: 10px;
+    }
+
+    .guide-text {
+      font-size: 13px;
+      color: #cbd5e0;
+      line-height: 1.6;
+    }
+
+    .guide-list {
+      margin-left: 18px;
+      margin-top: 6px;
+      font-size: 12.5px;
+      color: var(--text-sub);
+      line-height: 1.6;
+    }
+
+    .guide-list li {
+      margin-bottom: 4px;
+    }
+
+    .guide-highlight {
+      color: var(--accent-gold);
+      font-weight: 600;
     }
 
     footer {
-      margin-top: 24px;
-      font-size: 11.5px;
-      color: #718096;
+      margin-top: 28px;
+      padding-top: 16px;
+      border-top: 1px solid #2d2642;
+      width: 100%;
+      max-width: 680px;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .footer-credits {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .footer-contact {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .footer-contact a {
+      color: var(--accent-gold);
+      text-decoration: none;
+    }
+
+    .footer-copy {
+      font-size: 11px;
+      color: #718096;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -411,10 +502,14 @@
 
   <header>
     <div class="title">⚔️ cnation 무한 루프 OST 제작기</div>
-    <div class="subtitle">복수 이미지가 차례대로 전환되며 1곡의 음악에 맞춰 순환하는 통합 OST 비디오를 제작합니다.</div>
+    <div class="subtitle-wrapper">
+      <span>복수 이미지가 차례대로 전환되며 1곡의 음악에 맞춰 순환하는 통합 OST 비디오를 제작합니다.</span>
+      <button class="guide-link-btn" id="btnOpenGuide" type="button">📖 상세 사용법</button>
+    </div>
   </header>
 
-  <div class="container">
+  <!-- ==================== 1. MAIN MAKER VIEW ==================== -->
+  <div class="container" id="mainView">
     <!-- 1. Upload Card -->
     <div class="card">
       <div class="card-title">
@@ -433,7 +528,7 @@
         <label class="upload-box" for="audioInput">
           <span class="upload-icon">🎵</span>
           <span class="upload-label" id="audioLabel">음악 파일 선택 (선택)</span>
-          <span class="upload-desc" id="audioDesc">1개 또는 여러 개 MP3</span>
+          <span class="upload-desc" id="audioDesc">아이폰 파일 및 MP3 지원</span>
           <input type="file" id="audioInput" accept=".mp3, audio/mpeg, audio/mp3, .m4a, audio/x-m4a, audio/m4a, .wav, audio/wav, .aac, audio/aac, .flac, .ogg, audio/*" multiple />
         </label>
       </div>
@@ -458,7 +553,7 @@
     <div class="card">
       <div class="card-title">⚙️ 영상 제작 모드 및 해상도 설정</div>
 
-      <!-- Mode selector -->
+      <!-- Mode selector tabs -->
       <div class="mode-tabs">
         <button class="mode-tab active" id="tabUnified" type="button">
           🎬 하나의 영상으로 합치기 (추천)
@@ -526,7 +621,7 @@
               <span>카메라 줌 강도</span>
               <span id="valZoom">3.0%</span>
             </div>
-            <input type="range" id="paramZoom" min="0.5" max="6.0" step="0.5" value="3.0" />
+            <input type="range" id="paramZoom" min="0.0" max="6.0" step="0.5" value="3.0" />
           </div>
 
           <div class="control-item">
@@ -562,19 +657,124 @@
         <div class="progress-status" id="progressStatus">준비 중...</div>
       </div>
 
-      <!-- Results -->
-      <div class="results-box" id="resultsBox">
-        <div style="font-size: 14px; font-weight: 700; color: var(--accent-gold);" id="resultsTitle">
-          🎉 제작 완료된 동영상
+      <!-- Results with Prominent Save Button -->
+      <div class="card results-box" id="resultsBox" style="margin-top: 16px;">
+        <div class="card-title">
+          <span>🎉 제작 완료된 동영상</span>
+          <span class="badge" style="background: rgba(56, 161, 105, 0.2); color: var(--success);">렌더링 성공</span>
         </div>
+
         <video id="outputVideo" controls playsinline loop style="display:none;"></video>
+
+        <!-- High-visibility Save Button -->
+        <div id="unifiedDownloadWrapper" style="display:none; margin-top: 6px;">
+          <a class="btn btn-save" id="btnSaveUnified" href="#" download="cnation_ost_video.mp4">
+            <span>💾</span>
+            <span>동영상 저장 (기기에 다운로드)</span>
+          </a>
+          <div style="font-size: 11.5px; color: var(--text-sub); text-align: center; margin-top: 6px;">
+            * 버튼을 누르면 스마트폰 앨범 또는 파일 보관함에 바로 다운로드됩니다.
+          </div>
+        </div>
+
         <div id="resultsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
       </div>
     </div>
   </div>
 
+  <!-- ==================== 2. DETAILED GUIDE VIEW ==================== -->
+  <div class="container" id="guideView">
+    <div class="card">
+      <div class="card-title">
+        <span>📖 앱 상세 사용법 & 효과 안내</span>
+        <button class="badge" id="btnCloseGuide" style="cursor: pointer; border: none; font-size: 12px; padding: 4px 10px;">
+          ✕ 뒤로 가기 (홈으로)
+        </button>
+      </div>
+
+      <!-- Section 1: Core Flow -->
+      <div class="guide-section">
+        <div class="guide-heading">1. 기본 동작 방식 및 제작 흐름</div>
+        <div class="guide-text">
+          본 앱은 여러 장의 이미지(예: 14장의 OST 일러스트)와 1곡의 배경음악(MP3)을 결합하여, 음악 재생 시간 동안 이미지들이 부드럽게 크로스페이드(디졸브)되며 순환하는 <span class="guide-highlight">단 1개의 완성형 풀버전 OST 동영상</span>을 제작합니다.
+        </div>
+        <ul class="guide-list">
+          <li><span class="guide-highlight">복수 이미지 + 1개 음악 결합</span>: 140초 길이의 음악에 14장의 이미지를 올리면, 이미지 1장당 정확히 10초씩 균등 배분되어 음악에 맞춰 차례대로 순환 재생됩니다.</li>
+          <li><span class="guide-highlight">부드러운 전환 효과</span>: 이전 이미지에서 다음 이미지로 넘어갈 때 약 1.2초간 부드럽게 겹쳐지는 크로스페이드 트랜지션이 자동 적용됩니다.</li>
+          <li><span class="guide-highlight">개별 제작 모드 지원</span>: 상단 탭에서 '이미지별 개별 영상 분리 제작'을 선택하면 각 이미지당 1개씩 비디오를 따로 뽑을 수도 있습니다.</li>
+        </ul>
+      </div>
+
+      <!-- Section 2: Three Visual Effects -->
+      <div class="guide-section">
+        <div class="guide-heading">2. 모션 및 시각 효과 3가지 설명</div>
+        
+        <div style="margin-top: 6px; margin-bottom: 8px;">
+          <div style="font-size: 13.5px; font-weight: 700; color: #fff;">① 카메라 줌 강도 (Zoom & Pan)</div>
+          <div class="guide-text">
+            화면 전체가 부드러운 사인 곡선(Sinusoidal)에 따라 천천히 확대되었다가 제자리로 돌아오고, 미세하게 좌우로 이동하는 켄 번스(Ken Burns) 무빙 효과입니다.
+          </div>
+          <ul class="guide-list">
+            <li><span class="guide-highlight">0% (정지)</span>: 카메라 움직임과 흔들림이 <span class="guide-highlight">완전히 꺼집니다</span>. 이미지가 흔들리지 않고 원본 그대로 고정된 상태를 원하실 때 사용하세요.</li>
+            <li><span class="guide-highlight">1.0% ~ 3.5% (기본 추천)</span>: 은은하고 자연스러운 카메라 호흡감을 부여합니다.</li>
+          </ul>
+        </div>
+
+        <div style="margin-top: 8px; margin-bottom: 8px;">
+          <div style="font-size: 13.5px; font-weight: 700; color: #fff;">② 불빛 호흡(Glow) 펄스</div>
+          <div class="guide-text">
+            일러스트 내부의 밝은 광원 부위(횃불, 마법 오라, 캐릭터 눈의 안광, 유적 발광체 등)만을 감지하여, 심장 박동이나 숨을 쉬듯 주기적으로 밝아졌다 어두워지는 효과입니다.
+          </div>
+          <ul class="guide-list">
+            <li><span class="guide-highlight">값을 크게 할 때 (25% ~ 40%)</span>: 마법 불빛이나 룬 문자가 강렬하게 번쩍이고 타오르며 빛이 주변으로 환하게 퍼집니다. 다크 판타지 무드를 극대화합니다.</li>
+            <li><span class="guide-highlight">값을 작게 할 때 (5% ~ 15%)</span>: 불빛이 깜빡이는 티가 거의 나지 않고, 은은하고 차분한 생동감만 돕니다.</li>
+            <li><span class="guide-highlight">0%</span>: 조명 펄스 효과가 꺼지고 원본 밝기가 유지됩니다.</li>
+          </ul>
+        </div>
+
+        <div style="margin-top: 8px;">
+          <div style="font-size: 13.5px; font-weight: 700; color: #fff;">③ 부유 불빛 파티클 수 (Floating Particles)</div>
+          <div class="guide-text">
+            화면 아래에서 위로 신비롭게 피어오르는 모닥불 불씨(Ember)나 반딧불이/먼지 입자를 생성합니다.
+          </div>
+          <ul class="guide-list">
+            <li>상하 경계선에서 부드럽게 페이드인/아웃되므로 영상이 반복되어도 입자가 끊기지 않습니다.</li>
+            <li><span class="guide-highlight">0개</span>로 설정하면 파티클이 완전히 사라져 순수 일러스트만 감상할 수 있습니다.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Section 3: Performance & Tips -->
+      <div class="guide-section">
+        <div class="guide-heading">3. 해상도 및 모바일 최적화 팁</div>
+        <ul class="guide-list">
+          <li><span class="guide-highlight">SD 480p (기본 권장)</span>: 스마트폰 화면에서 충분히 선명하면서도 렌더링이 매우 가볍고 빠릅니다.</li>
+          <li><span class="guide-highlight">LD 360p / 240p</span>: 파일 용량을 최소화하고 초고속으로 인코딩할 때 적합합니다.</li>
+          <li><span class="guide-highlight">15 FPS / 10 FPS (30미만 프레임)</span>: 인코딩할 프레임 수를 절반 이하로 줄여 모바일 기기의 발열과 배터리 소모를 방지하고 속도를 2배 이상 높여줍니다.</li>
+          <li><span class="guide-highlight">FHD 1080p</span>: 유튜브 공식 업로드용 고화질 비디오 제작 시 선택하세요.</li>
+        </ul>
+      </div>
+
+      <!-- Back button inside card -->
+      <div class="btn-row" style="margin-top: 20px;">
+        <button class="btn btn-primary" id="btnBackToHome" type="button">
+          <span>🏠</span> 홈으로 돌아가기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Common Footer -->
   <footer>
-    GitHub Pages 호스팅 지원 | SD / 360p / 240p 저해상도 & 15/10 FPS 저프레임 고속 렌더링
+    <div class="footer-credits">
+      앱제작 : cnation(문명국)
+    </div>
+    <div class="footer-contact">
+      문의 : <a href="mailto:mmk75@naver.com">mmk75@naver.com</a>
+    </div>
+    <div class="footer-copy">
+      cnation 무한 루프 OST 제작기 © 2026. All Rights Reserved.
+    </div>
   </footer>
 
   <script>
@@ -585,7 +785,14 @@
     let isProcessing = false;
     let animFrameId = null;
 
-    let appMode = 'unified'; // 'unified' (1개 통합 영상) or 'individual' (개별 영상)
+    let appMode = 'unified'; // 'unified' or 'individual'
+
+    // DOM Elements
+    const mainView = document.getElementById('mainView');
+    const guideView = document.getElementById('guideView');
+    const btnOpenGuide = document.getElementById('btnOpenGuide');
+    const btnCloseGuide = document.getElementById('btnCloseGuide');
+    const btnBackToHome = document.getElementById('btnBackToHome');
 
     const canvas = document.getElementById('previewCanvas');
     const ctx = canvas.getContext('2d');
@@ -623,20 +830,41 @@
     const progressStatus = document.getElementById('progressStatus');
 
     const resultsBox = document.getElementById('resultsBox');
-    const resultsTitle = document.getElementById('resultsTitle');
     const resultsList = document.getElementById('resultsList');
     const outputVideo = document.getElementById('outputVideo');
+    const unifiedDownloadWrapper = document.getElementById('unifiedDownloadWrapper');
+    const btnSaveUnified = document.getElementById('btnSaveUnified');
 
-    // Label updates
+    // --- Navigation between Home and Guide ---
+    function showGuide() {
+      mainView.style.display = 'none';
+      guideView.style.display = 'flex';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showHome() {
+      guideView.style.display = 'none';
+      mainView.style.display = 'flex';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    btnOpenGuide.addEventListener('click', showGuide);
+    btnCloseGuide.addEventListener('click', showHome);
+    btnBackToHome.addEventListener('click', showHome);
+
+    // --- Control Label Handlers ---
     paramDuration.addEventListener('input', () => valDuration.textContent = paramDuration.value + '초');
-    paramZoom.addEventListener('input', () => valZoom.textContent = paramZoom.value + '%');
+    paramZoom.addEventListener('input', () => {
+      const v = parseFloat(paramZoom.value);
+      valZoom.textContent = v === 0 ? '0% (정지)' : v + '%';
+    });
     paramGlow.addEventListener('input', () => valGlow.textContent = paramGlow.value + '%');
     paramParticles.addEventListener('input', () => {
       valParticles.textContent = paramParticles.value + '개';
       initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
     });
 
-    // --- Mode Tabs ---
+    // --- Mode Switch Tabs ---
     tabUnified.addEventListener('click', () => {
       appMode = 'unified';
       tabUnified.classList.add('active');
@@ -676,7 +904,6 @@
       else if (resVal === 'original') targetW = refWidth;
 
       let targetH = Math.round(targetW / aspect);
-      // Ensure dimensions are even for video encoders
       if (targetW % 2 !== 0) targetW += 1;
       if (targetH % 2 !== 0) targetH += 1;
 
@@ -728,7 +955,6 @@
       imageLabel.textContent = `${selectedImages.length}개 이미지 선택됨`;
       fileCountBadge.textContent = `이미지 ${selectedImages.length}개 / 음원 ${selectedAudios.length}개`;
 
-      // Load all image objects in memory for smooth transitions
       loadedImageObjs = [];
       for (const f of selectedImages) {
         const img = await loadFileAsImage(f);
@@ -739,7 +965,6 @@
       btnStartRecord.disabled = false;
       updateActionBtnText();
 
-      // Render Queue UI
       queueBox.innerHTML = '';
       queueBox.style.display = 'flex';
       selectedImages.forEach((imgFile, idx) => {
@@ -749,7 +974,6 @@
         queueBox.appendChild(item);
       });
 
-      // Update Canvas Size and Start Preview
       updateCanvasSize(loadedImageObjs[0].width, loadedImageObjs[0].height);
       initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
       startLivePreview();
@@ -792,7 +1016,7 @@
       });
     }
 
-    // --- Core Canvas Renderer with Motion & Crossfade ---
+    // --- Core Canvas Renderer with 0% Zoom Static Support ---
     function drawLayer(targetImg, localT, alpha = 1.0) {
       const angle = 2.0 * Math.PI * localT;
       const w = canvas.width;
@@ -800,27 +1024,36 @@
 
       // 1. Ken Burns Zoom & Pan
       const zoomRange = parseFloat(paramZoom.value) / 100.0;
-      const s = 0.5 * (1.0 - Math.cos(angle)); // 0 -> 1 -> 0
-      const zoom = 1.0 + zoomRange * s;
-
-      const panX = 8.0 * Math.sin(angle);
-      const panY = 5.0 * Math.sin(2.0 * angle);
-
-      const cropW = w / zoom;
-      const cropH = h / zoom;
-      const cx = w / 2.0 + panX;
-      const cy = h / 2.0 + panY;
-
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.drawImage(
-        targetImg,
-        (targetImg.width / w) * (cx - cropW / 2.0),
-        (targetImg.height / h) * (cy - cropH / 2.0),
-        (targetImg.width / w) * cropW,
-        (targetImg.height / h) * cropH,
-        0, 0, w, h
-      );
+
+      let cropX, cropY, cropW, cropH;
+      if (zoomRange <= 0.0001) {
+        // 0% Zoom: completely static, zero jitter
+        cropX = 0;
+        cropY = 0;
+        cropW = targetImg.width;
+        cropH = targetImg.height;
+        ctx.drawImage(targetImg, 0, 0, w, h);
+      } else {
+        const s = 0.5 * (1.0 - Math.cos(angle)); // 0 -> 1 -> 0
+        const zoom = 1.0 + zoomRange * s;
+        const panScale = zoomRange / 0.035;
+        const panX = 8.0 * panScale * Math.sin(angle);
+        const panY = 5.0 * panScale * Math.sin(2.0 * angle);
+
+        const cW = w / zoom;
+        const cH = h / zoom;
+        const cx = w / 2.0 + panX;
+        const cy = h / 2.0 + panY;
+
+        cropX = (targetImg.width / w) * (cx - cW / 2.0);
+        cropY = (targetImg.height / h) * (cy - cH / 2.0);
+        cropW = (targetImg.width / w) * cW;
+        cropH = (targetImg.height / h) * cH;
+
+        ctx.drawImage(targetImg, cropX, cropY, cropW, cropH, 0, 0, w, h);
+      }
 
       // 2. Ambient Lighting Glow Pulse
       const glowFactor = parseFloat(paramGlow.value) / 100.0;
@@ -829,14 +1062,7 @@
         ctx.globalCompositeOperation = 'screen';
         ctx.filter = 'brightness(1.5) contrast(1.7) blur(14px)';
         ctx.globalAlpha = alpha * pulse;
-        ctx.drawImage(
-          targetImg,
-          (targetImg.width / w) * (cx - cropW / 2.0),
-          (targetImg.height / h) * (cy - cropH / 2.0),
-          (targetImg.width / w) * cropW,
-          (targetImg.height / h) * cropH,
-          0, 0, w, h
-        );
+        ctx.drawImage(targetImg, cropX, cropY, cropW, cropH, 0, 0, w, h);
       }
       ctx.restore();
     }
@@ -888,22 +1114,16 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Check crossfade transition
       const fadeStartTime = secPerImage - crossfadeDuration;
       if (timeInSlot > fadeStartTime && numImages > 1) {
-        // In crossfade window
-        const fadeProgress = (timeInSlot - fadeStartTime) / crossfadeDuration; // 0.0 -> 1.0
-        // Draw current image
+        const fadeProgress = (timeInSlot - fadeStartTime) / crossfadeDuration;
         drawLayer(imgList[currentIndex], localT, 1.0);
-        // Draw next image fading in
         const nextLocalT = (fadeProgress * crossfadeDuration) / secPerImage;
         drawLayer(imgList[nextIndex], nextLocalT, fadeProgress);
       } else {
-        // Solid current image
         drawLayer(imgList[currentIndex], localT, 1.0);
       }
 
-      // Draw floating particles continuously
       drawParticles((currentSec % 10.0) / 10.0);
     }
 
@@ -932,7 +1152,7 @@
       animFrameId = requestAnimationFrame(previewLoop);
     }
 
-    // --- Video Recording Core ---
+    // --- Video Recording Handlers ---
     btnStartRecord.addEventListener('click', async function() {
       if (loadedImageObjs.length === 0 || isProcessing) return;
 
@@ -941,6 +1161,7 @@
       progressBox.style.display = 'flex';
       resultsBox.style.display = 'none';
       resultsList.innerHTML = '';
+      unifiedDownloadWrapper.style.display = 'none';
 
       if (appMode === 'unified') {
         await recordUnifiedVideo();
@@ -953,7 +1174,7 @@
       startLivePreview();
     });
 
-    // --- MODE 1: UNIFIED SINGLE VIDEO (1곡 음악에 14개 이미지 루프) ---
+    // --- MODE 1: UNIFIED SINGLE VIDEO (1곡에 맞춘 통합 영상) ---
     async function recordUnifiedVideo() {
       const fps = parseInt(paramFps.value);
       let audioFile = selectedAudios.length > 0 ? selectedAudios[0] : null;
@@ -981,13 +1202,11 @@
         totalDuration = loadedImageObjs.length * secPerImage;
       }
 
-      // Update resolution and canvas
       updateCanvasSize(loadedImageObjs[0].width, loadedImageObjs[0].height);
       initParticles(parseInt(paramParticles.value), canvas.width, canvas.height);
 
       const totalFrames = Math.round(totalDuration * fps);
 
-      // Select mimeType
       let mimeType = 'video/mp4';
       if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
         mimeType = 'video/mp4;codecs=avc1';
@@ -1002,7 +1221,6 @@
       const videoStream = canvas.captureStream(fps);
       let combinedStream = videoStream;
 
-      // Web Audio stream combination
       let audioCtx = null;
       if (audioElement) {
         try {
@@ -1025,9 +1243,8 @@
         }
       }
 
-      // Bitrate based on resolution
       const res = paramResolution.value;
-      let bitrate = 4000000; // 4 Mbps for SD
+      let bitrate = 4000000;
       if (res === '1080') bitrate = 12000000;
       else if (res === '720') bitrate = 8000000;
       else if (res === '480') bitrate = 4000000;
@@ -1060,14 +1277,14 @@
           outputVideo.src = blobUrl;
           outputVideo.style.display = 'block';
 
-          resultsList.innerHTML = `
-            <a class="download-link" href="${blobUrl}" download="${outName}">
-              <span>⬇️</span> ${outName} 다운로드 (${Math.round(totalDuration)}초 완성본)
-            </a>
-          `;
+          // Prominent Save Button
+          btnSaveUnified.href = blobUrl;
+          btnSaveUnified.download = outName;
+          unifiedDownloadWrapper.style.display = 'block';
+
           resultsBox.style.display = 'flex';
           progressFill.style.width = '100%';
-          progressStatus.textContent = '동영상 제작 완료! 아래에서 확인 및 다운로드하세요.';
+          progressStatus.textContent = '동영상 제작 완료! 아래에서 확인 및 저장하세요.';
           resolve();
         };
       });
@@ -1078,7 +1295,6 @@
         audioElement.play().catch(() => {});
       }
 
-      // Step by step render frames
       for (let f = 0; f < totalFrames; f++) {
         const currentSec = f / fps;
         renderUnifiedSceneAtTime(currentSec, loadedImageObjs, secPerImage);
@@ -1100,6 +1316,7 @@
       const fps = parseInt(paramFps.value);
       const total = loadedImageObjs.length;
       outputVideo.style.display = 'none';
+      unifiedDownloadWrapper.style.display = 'none';
 
       for (let i = 0; i < total; i++) {
         const img = loadedImageObjs[i];
@@ -1132,11 +1349,14 @@
             row.style.alignItems = 'center';
             row.style.justifyContent = 'space-between';
             row.style.background = '#110e1e';
-            row.style.padding = '8px 12px';
-            row.style.borderRadius = '8px';
+            row.style.padding = '10px 14px';
+            row.style.borderRadius = '10px';
+            row.style.border = '1px solid #2d2642';
             row.innerHTML = `
-              <span style="font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%;">🎥 ${outName}</span>
-              <a class="download-link" style="padding:6px 10px; font-size:12px;" href="${blobUrl}" download="${outName}">저장</a>
+              <span style="font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%;">🎥 ${outName}</span>
+              <a class="btn btn-save" style="padding:8px 14px; font-size:13px;" href="${blobUrl}" download="${outName}">
+                💾 동영상 저장
+              </a>
             `;
             resultsList.appendChild(row);
             resultsBox.style.display = 'flex';
