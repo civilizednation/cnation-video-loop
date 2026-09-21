@@ -1,0 +1,32 @@
+{
+  "name": "cnation 무한 루프 OST 제작기",
+  "short_name": "OST 제작기",
+  "description": "여러 이미지가 차례대로 전환되며 한 곡의 음악에 맞춰 순환하는 통합 OST 영상을 만듭니다.",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0d19",
+  "theme_color": "#0f0d19",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
